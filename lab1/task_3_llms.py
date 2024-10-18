@@ -11,8 +11,8 @@ from lab1.task_2_languages import fit_parameters_extract, BOOK_TITLES_TASK_2
 BOOK_TITLES_TASK_3 = [ # task with LLM generated text
     "llm_english",
     "llm_danish",
-    "llm_spanish",
-    "llm_esperanto"
+    # "llm_spanish",
+    # "llm_esperanto"
 ]
 
 

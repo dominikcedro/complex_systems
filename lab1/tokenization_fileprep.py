@@ -124,7 +124,9 @@ if __name__ == "__main__":
         "llm_english",
         "llm_danish",
         "llm_spanish",
-        "llm_esperanto"
+        "llm_esperanto",
+        "russian_book", # new entry for my interest
+        "hebrew_book"
     ]
 
     for title in book_titles:

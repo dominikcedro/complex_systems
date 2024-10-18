@@ -18,6 +18,9 @@ BOOK_TITLES_TASK_1 = [ # task with english books
 
 
 
+import os
+import pandas as pd
+
 def create_dfs_from_csvs(BOOK_TITLES):
     """
     Creates a list of DataFrames from CSV files based on the provided book titles.
@@ -32,15 +35,17 @@ def create_dfs_from_csvs(BOOK_TITLES):
     Returns:
         list of pandas.DataFrame: A list of DataFrames corresponding to the matched CSV files.
     """
-    dfs = []
+    dfs_dict = {}
     with os.scandir('./csv_output') as it:
         for entry in it:
             if not entry.name.startswith('.') and entry.is_file():
                 for title in BOOK_TITLES:
                     if title in entry.name:
                         df = pd.read_csv(entry.path)
-                        dfs.append(df)
+                        dfs_dict[title] = df
                         break
+
+    dfs = [dfs_dict[title] for title in BOOK_TITLES if title in dfs_dict]
     return dfs
 
 
