@@ -13,8 +13,8 @@ BOOK_TITLES_TASK_2 = [ # task about describing languages by a and b parameters
     "spanish_book",
     "esperanto_book",
     "danish_book",
-    "russian_book",
-    "hebrew_book"
+    # "russian_book",
+    # "hebrew_book"
 ]
 
 def zipf_mandelbrot(rank, a, b):
