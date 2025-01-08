@@ -8,9 +8,7 @@ import random
 import matplotlib.pyplot as plt
 from icecream import ic
 
-# initiate the lattice
-
-SIZE_OF_LATTICE = 30 # from the input file
+SIZE_OF_LATTICE = 15 # from the input file
 site_p = 0.8 # probability of occupation of lattice site
 
 def create_lattice(size_of_lattice, site_p):
@@ -22,9 +20,12 @@ def create_lattice(size_of_lattice, site_p):
     """
     random_r = 0  # will be chosen randomly later on
     lattice = []
+    random.seed(42)
+
     for row in range(size_of_lattice):
         a = []
         for column in range(size_of_lattice):
+
             random_r = random.uniform(0.0, 1.0)
             if random_r < site_p:
                 a.append(int(1))
@@ -36,7 +37,6 @@ def create_lattice(size_of_lattice, site_p):
     return lattice
 
 lattice = create_lattice(SIZE_OF_LATTICE, site_p)
-##### EXTRA - present lattice
 
 def plot_lattice(lattice):
     plt.imshow(lattice, interpolation='none')
@@ -47,86 +47,53 @@ def plot_lattice(lattice):
     plt.show()
 
 # plot_lattice(lattice)
-plot_lattice(lattice)
+# plot_lattice(lattice)
 
 ##### BURNING METHOD
 
-# now i will go over lattice copy
-# for all top occupied i set their value to 2
-# t += 1
-# i go over the top line once again and check for neighbours (if index-1 or +1  == 1 or from above or below if  index equal is ==1
 
-for index, site in enumerate(lattice[0]):
-    if site == 1:
-        lattice[0][index] = 2
-print("")
-# print(lattice)
+def burning_method(lattice_raw):
+    lattice = np.copy(lattice_raw)
+    t_value = 2
 
-t_value = 2
-for index, row in enumerate(lattice):
-    change = False
+    for index, site in enumerate(lattice[0]):
+        if site == 1:
+            lattice[0][index] = t_value
 
-    t_value +=1
-    # ic(t_value)
-    # ic(index, row)
-    if index == 0: # for the first row
-        # only check south
-        row_below = lattice[index+1]
-        # ic(row_below)
-        for site_index, site in enumerate(row):
-            if row_below[site_index] == 1 and site == 2:
-                # ic("below is one for", site, site_index)
-                row_below[site_index] = t_value
-    if index == len(lattice)-1: # for lat row
+    for index in range(1, len(lattice)):
+        t_value += 1
+        row = lattice[index]
         row_above = lattice[index - 1]
-        # ic(row_below)
+
         for site_index, site in enumerate(row):
-            # termination statement
+            if row_above[site_index] >= 2 and site == 1:
+                row[site_index] = t_value
 
-            if row_above[site_index] == 1 and site > 1:
-                # ic("below is one for", site, site_index)
-                row_above[site_index] = t_value
-                change = True
-
-            if  site > 1 and row[site_index - 1] == 1:  # check left
-                row[site_index - 1] = t_value
-                change = True
-
-            if site_index != len(row) - 1 and site > 1 and row[site_index + 1] == 1:  # check right
-                row[site_index + 1] = t_value
-                change = True
-
-    if index != len(lattice)-1: # change it to else: later because we are skipping last row
-        row_below = lattice[index + 1]
-        row_above = lattice[index - 1]
-        # ic(row_below)
         for site_index, site in enumerate(row):
-            # termination statement
-            if row_above[site_index] == 1 and site > 1:
-                # ic("below is one for", site, site_index)
-                row_above[site_index] = t_value
-                change = True
-            if row_below[site_index] == 1 and site > 1:
-                # ic("below is one for", site, site_index)
-                row_below[site_index] = t_value
-                change = True
+            if site >= 2:
+                if site_index > 0 and row[site_index - 1] == 1  and index<len(lattice)-1:  # check on the left
+                    row[site_index - 1] = t_value
+                if site_index < len(row) - 1 and row[site_index + 1] == 1 and index<len(lattice)-1:  # check right site
+                    row[site_index + 1] = t_value
+                if index < len(lattice) - 1 and lattice[index + 1][site_index] == 1:  # checking  below site
+                    lattice[index + 1][site_index] = t_value
 
-            if site > 1 and row[site_index-1] == 1: # check left
-                row[site_index - 1] = t_value
-                change = True
+    return lattice
 
-            if site_index != len(row)-1 and site > 1 and row[site_index + 1] == 1: # check right
-                row[site_index + 1] = t_value
-                change = True
-        if not change:
-            ic("not changes made", change)
-            break
+def plot_lattice_with_values(lattice):
+    plt.imshow(lattice, interpolation='none', cmap='viridis')
+    plt.colorbar(label='Site Occupation')
+    plt.title('Lattice Occupation')
+    plt.xlabel('Column')
+    plt.ylabel('Row')
 
+    rows, cols = lattice.shape
+    for i in range(rows):
+        for j in range(cols):
+            plt.text(j, i, str(lattice[i, j]), ha='center', va='center', color='white')
 
+    plt.show()
 
-plot_lattice(lattice)
-
-# currently I have one issue with the results. because my algorithm searches
-# from left to right there is a tendency to not reach to left side enough
-# im thinking if applying the same algorithm but with other direction would work
-#to fix this issue or maybe applying some regression to left side just to reach far enough?
+plot_lattice_with_values(lattice)
+lattice_burning = burning_method(lattice)
+plot_lattice_with_values(lattice_burning)
