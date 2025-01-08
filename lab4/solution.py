@@ -6,10 +6,9 @@ description: Main program for percolation laboratory list of tasks.
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-from icecream import ic
+# from icecream import ic
+import os
 
-SIZE_OF_LATTICE = 15 # from the input file
-site_p = 0.8 # probability of occupation of lattice site
 
 def create_lattice(size_of_lattice, site_p):
     """
@@ -33,10 +32,9 @@ def create_lattice(size_of_lattice, site_p):
                 a.append(int(0))
         lattice.append(a)
     lattice = np.array(lattice)
-    print(lattice)
+    # print(lattice)
     return lattice
 
-lattice = create_lattice(SIZE_OF_LATTICE, site_p)
 
 def plot_lattice(lattice):
     plt.imshow(lattice, interpolation='none')
@@ -134,20 +132,68 @@ def hoshen_kopelman(lattice_raw):
 
     for key in cluster_sizes:
         cluster_sizes[key] = int(cluster_sizes[key])
-    ic(cluster_sizes)
+    # ic(cluster_sizes)
     distribution = Counter(cluster_sizes)
 
     return lattice, cluster_sizes, max(cluster_sizes), distribution
 
 
+def write_ave_output_to_file(L, T, pf_low, avg_smax):
+    os.makedirs('output', exist_ok=True)
+    filename = f"output/Ave-L{L}T{T}.txt"
+    with open(filename, 'w', encoding='utf-8') as file:
+        for p in pf_low:
+            file.write(f"{p}  {pf_low[p]}  {avg_smax[p]}\n")
 
-plot_lattice_with_values(lattice)
-lattice_burning = burning_method(lattice)
-# plot_lattice_with_values(lattice_burning)
-lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
-# plot_lattice_with_values(lattice_hoshen)
-# print(cluster_sizes)
-ic(cluster_sizes)
-ic(max_cluster_size)
-ic(distribution)
+def write_dist_output_to_file(L, T, cluster_distribution):
+    os.makedirs('output', exist_ok=True)
+    for p, distribution in cluster_distribution.items():
+        filename = f"output/Dist-p{round(p,2)}L{L}T{T}.txt"
+        with open(filename, 'w', encoding='utf-8') as file:
+            for size, count in distribution.items():
+                file.write(f"{size}  {count}\n")
+
+def read_input_parameters(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        params = {}
+        for line in lines:
+            key, value = line.split('%')
+            params[key.strip()] = float(value.strip())
+    return params
+
+if __name__ == "__main__":
+    params = read_input_parameters('perc_ini.txt')
+    L = int(params['L'])
+    T = int(params['T'])
+    p_0 = params['p0']
+    p_k = params['pk']
+    d_p = params['dp']
+
+    pf_low = {}
+    avg_smax = {}
+    cluster_distribution = {}
+
+    p_values = np.arange(p_0, p_k + d_p, d_p)
+    for p in p_values:
+        pf_count = 0
+        smax_total = 0
+        distribution_total = Counter()
+
+        for _ in range(T):
+            lattice = create_lattice(L, p)
+            lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
+
+            if np.any(lattice_hoshen[0, :] == lattice_hoshen[-1, :]):
+                pf_count += 1
+
+            smax_total += max_cluster_size
+            distribution_total.update(distribution)
+
+        pf_low[p] = pf_count / T
+        avg_smax[p] = smax_total / T
+        cluster_distribution[p] = dict(distribution_total)
+
+    write_ave_output_to_file(L, T, pf_low, avg_smax)
+    write_dist_output_to_file(L, T, cluster_distribution)
 
