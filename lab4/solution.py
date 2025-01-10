@@ -10,16 +10,18 @@ import matplotlib.pyplot as plt
 import os
 
 
-def create_lattice(size_of_lattice, site_p):
+def create_lattice(size_of_lattice, site_p, ranom_seed = 0):
     """
 
+    :param ranom_seed:
     :param size_of_lattice:
     :param site_p:
     :return: lattice: (np.array)
     """
-    random_r = 0  # will be chosen randomly later on
+    if ranom_seed:
+        random.seed(ranom_seed)
+
     lattice = []
-    random.seed(42)
 
     for row in range(size_of_lattice):
         a = []
@@ -49,6 +51,7 @@ def plot_lattice(lattice):
 
 ##### BURNING METHOD
 
+import numpy as np
 
 def burning_method(lattice_raw):
     lattice = np.copy(lattice_raw)
@@ -58,23 +61,32 @@ def burning_method(lattice_raw):
         if site == 1:
             lattice[0][index] = t_value
 
-    for index in range(1, len(lattice)):
+    while True:
+        new_burns = False
+        for row in range(len(lattice)):
+            for col in range(len(lattice[row])):
+                if lattice[row][col] == t_value:
+                    # Check North
+                    if row > 0 and lattice[row - 1][col] == 1:
+                        lattice[row - 1][col] = t_value + 1
+                        new_burns = True
+                    # Check East
+                    if col < len(lattice[row]) - 1 and lattice[row][col + 1] == 1:
+                        lattice[row][col + 1] = t_value + 1
+                        new_burns = True
+                    # Check South
+                    if row < len(lattice) - 1 and lattice[row + 1][col] == 1:
+                        lattice[row + 1][col] = t_value + 1
+                        new_burns = True
+                    # Check West
+                    if col > 0 and lattice[row][col - 1] == 1:
+                        lattice[row][col - 1] = t_value + 1
+                        new_burns = True
+        if np.any(lattice[-1] == t_value + 1):
+            break
+        if not new_burns:
+            break
         t_value += 1
-        row = lattice[index]
-        row_above = lattice[index - 1]
-
-        for site_index, site in enumerate(row):
-            if row_above[site_index] >= 2 and site == 1:
-                row[site_index] = t_value
-
-        for site_index, site in enumerate(row):
-            if site >= 2:
-                if site_index > 0 and row[site_index - 1] == 1  and index<len(lattice)-1:  # check on the left
-                    row[site_index - 1] = t_value
-                if site_index < len(row) - 1 and row[site_index + 1] == 1 and index<len(lattice)-1:  # check right site
-                    row[site_index + 1] = t_value
-                if index < len(lattice) - 1 and lattice[index + 1][site_index] == 1:  # checking  below site
-                    lattice[index + 1][site_index] = t_value
 
     return lattice
 
@@ -163,37 +175,44 @@ def read_input_parameters(filename):
     return params
 
 if __name__ == "__main__":
-    params = read_input_parameters('perc_ini.txt')
-    L = int(params['L'])
-    T = int(params['T'])
-    p_0 = params['p0']
-    p_k = params['pk']
-    d_p = params['dp']
-
-    pf_low = {}
-    avg_smax = {}
-    cluster_distribution = {}
-
-    p_values = np.arange(p_0, p_k + d_p, d_p)
-    for p in p_values:
-        pf_count = 0
-        smax_total = 0
-        distribution_total = Counter()
-
-        for _ in range(T):
-            lattice = create_lattice(L, p)
-            lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
-
-            if np.any(lattice_hoshen[0, :] == lattice_hoshen[-1, :]):
-                pf_count += 1
-
-            smax_total += max_cluster_size
-            distribution_total.update(distribution)
-
-        pf_low[p] = pf_count / T
-        avg_smax[p] = smax_total / T
-        cluster_distribution[p] = dict(distribution_total)
-
-    write_ave_output_to_file(L, T, pf_low, avg_smax)
-    write_dist_output_to_file(L, T, cluster_distribution)
+    lattice_size_ex1 = 10
+    percolation_p_ex1 = [0.6]
+    for p in percolation_p_ex1:
+        lattice_raw = create_lattice(lattice_size_ex1, p,10)
+        plot_lattice_with_values(lattice_raw)
+        lattice_burning = burning_method(lattice_raw)
+        plot_lattice_with_values(lattice_burning)
+    # params = read_input_parameters('perc_ini.txt')
+    # L = int(params['L'])
+    # T = int(params['T'])
+    # p_0 = params['p0']
+    # p_k = params['pk']
+    # d_p = params['dp']
+    #
+    # pf_low = {}
+    # avg_smax = {}
+    # cluster_distribution = {}
+    #
+    # p_values = np.arange(p_0, p_k + d_p, d_p)
+    # for p in p_values:
+    #     pf_count = 0
+    #     smax_total = 0
+    #     distribution_total = Counter()
+    #
+    #     for _ in range(T):
+    #         lattice = create_lattice(L, p)
+    #         lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
+    #
+    #         if np.any(lattice_hoshen[0, :] == lattice_hoshen[-1, :]):
+    #             pf_count += 1
+    #
+    #         smax_total += max_cluster_size
+    #         distribution_total.update(distribution)
+    #
+    #     pf_low[p] = pf_count / T
+    #     avg_smax[p] = smax_total / T
+    #     cluster_distribution[p] = dict(distribution_total)
+    #
+    # write_ave_output_to_file(L, T, pf_low, avg_smax)
+    # write_dist_output_to_file(L, T, cluster_distribution)
 
