@@ -3,12 +3,13 @@ author: Dominik Cedro
 date: 08.12.2024
 description: Main program for percolation laboratory list of tasks.
 """
-import numpy as np
 import random
 import matplotlib.pyplot as plt
-# from icecream import ic
+from icecream import ic
 import os
-
+from collections import Counter
+import numpy as np
+from collections import defaultdict
 
 def create_lattice(size_of_lattice, site_p, ranom_seed = 0):
     """
@@ -46,12 +47,6 @@ def plot_lattice(lattice):
     plt.ylabel('Row')
     plt.show()
 
-# plot_lattice(lattice)
-# plot_lattice(lattice)
-
-##### BURNING METHOD
-
-import numpy as np
 
 def burning_method(lattice_raw):
     lattice = np.copy(lattice_raw)
@@ -87,13 +82,21 @@ def burning_method(lattice_raw):
         if not new_burns:
             break
         t_value += 1
+    connection = np.any(lattice[-1] > 1)
+    # ic(int(connection))
+    return lattice, connection
 
-    return lattice
 
-def plot_lattice_with_values(lattice):
+def plot_lattice_with_values(lattice, title="", save=False):
     plt.imshow(lattice, interpolation='none', cmap='viridis')
     plt.colorbar(label='Site Occupation')
-    plt.title('Lattice Occupation')
+
+    if title:
+        plt.title(title)
+    else:
+        title='plot'
+        plt.title('Lattice Occupation')
+
     plt.xlabel('Column')
     plt.ylabel('Row')
 
@@ -101,15 +104,16 @@ def plot_lattice_with_values(lattice):
     for i in range(rows):
         for j in range(cols):
             plt.text(j, i, str(lattice[i, j]), ha='center', va='center', color='white')
+    if save:
+        plt.savefig(fname=f'plot/{title}.png', format='png')
+        plt.show()
+    else:
+        plt.show()
 
-    plt.show()
-
-# HOSHEN - KOPELMAN ALGORITHM
-
-from collections import Counter
 
 def hoshen_kopelman(lattice_raw):
     k = 2
+    Mk=1
     lattice = np.copy(lattice_raw)
     cluster_sizes = {}
 
@@ -144,10 +148,77 @@ def hoshen_kopelman(lattice_raw):
 
     for key in cluster_sizes:
         cluster_sizes[key] = int(cluster_sizes[key])
-    # ic(cluster_sizes)
     distribution = Counter(cluster_sizes)
 
     return lattice, cluster_sizes, max(cluster_sizes), distribution
+
+
+def hoshen_kopelman_2(lattice):
+    """
+    Perform the Hoshen-Kopelman algorithm on a given lattice.
+
+    Args:
+        lattice (2D array): Input lattice with 1s (occupied sites) and 0s (empty sites).
+
+    Returns:
+        labeled_lattice (2D array): Lattice with unique cluster labels.
+        cluster_sizes (list): List of cluster sizes.
+        max_cluster_size (int): Size of the largest cluster.
+        distribution (dict): Histogram of cluster sizes.
+    """
+    # Initialize variables
+    rows, cols = lattice.shape
+    labeled_lattice = np.zeros_like(lattice, dtype=int)
+    cluster_sizes = defaultdict(int)  # To store sizes of clusters
+    next_label = 2  # Start labels from 2 (1 is reserved for occupied cells)
+
+    # First pass: Assign labels
+    for i in range(rows):
+        for j in range(cols):
+            if lattice[i, j] == 1:  # Only process occupied cells
+                top = labeled_lattice[i - 1, j] if i > 0 else 0
+                left = labeled_lattice[i, j - 1] if j > 0 else 0
+
+                if top == 0 and left == 0:  # New cluster
+                    labeled_lattice[i, j] = next_label
+                    cluster_sizes[next_label] = 1
+                    next_label += 1
+                elif top > 0 and left == 0:  # Extend top cluster
+                    labeled_lattice[i, j] = top
+                    cluster_sizes[top] += 1
+                elif left > 0 and top == 0:  # Extend left cluster
+                    labeled_lattice[i, j] = left
+                    cluster_sizes[left] += 1
+                elif top > 0 and left > 0:  # Merge clusters or extend one
+                    if top == left:
+                        labeled_lattice[i, j] = top
+                        cluster_sizes[top] += 1
+                    else:  # Merge clusters
+                        labeled_lattice[i, j] = min(top, left)
+                        smaller, larger = min(top, left), max(top, left)
+                        cluster_sizes[smaller] += cluster_sizes[larger] + 1
+                        cluster_sizes[larger] = -smaller
+                else:
+                    raise ValueError("Unexpected case encountered.")
+
+    # Second pass: Resolve negative masses and relabel
+    for i in range(rows):
+        for j in range(cols):
+            if labeled_lattice[i, j] > 0:
+                label = labeled_lattice[i, j]
+                while cluster_sizes[label] < 0:
+                    label = -cluster_sizes[label]
+                labeled_lattice[i, j] = label
+
+    # Filter cluster sizes to exclude merged ones (negative values)
+    final_cluster_sizes = {k: v for k, v in cluster_sizes.items() if v > 0}
+
+    # Build the cluster size distribution
+    distribution = defaultdict(int)
+    for size in final_cluster_sizes.values():
+        distribution[size] += 1
+
+    return  labeled_lattice, list(final_cluster_sizes.values()), max(final_cluster_sizes.values()) if final_cluster_sizes else 0, dict(distribution),
 
 
 def write_ave_output_to_file(L, T, pf_low, avg_smax):
@@ -155,7 +226,8 @@ def write_ave_output_to_file(L, T, pf_low, avg_smax):
     filename = f"output/Ave-L{L}T{T}.txt"
     with open(filename, 'w', encoding='utf-8') as file:
         for p in pf_low:
-            file.write(f"{p}  {pf_low[p]}  {avg_smax[p]}\n")
+            file.write(f"{round(p,2)}  {pf_low[p]}  {avg_smax[p]}\n")
+
 
 def write_dist_output_to_file(L, T, cluster_distribution):
     os.makedirs('output', exist_ok=True)
@@ -164,6 +236,7 @@ def write_dist_output_to_file(L, T, cluster_distribution):
         with open(filename, 'w', encoding='utf-8') as file:
             for size, count in distribution.items():
                 file.write(f"{size}  {count}\n")
+
 
 def read_input_parameters(filename):
     with open(filename, 'r') as file:
@@ -174,45 +247,51 @@ def read_input_parameters(filename):
             params[key.strip()] = float(value.strip())
     return params
 
+
 if __name__ == "__main__":
-    lattice_size_ex1 = 10
-    percolation_p_ex1 = [0.6]
-    for p in percolation_p_ex1:
-        lattice_raw = create_lattice(lattice_size_ex1, p,10)
-        plot_lattice_with_values(lattice_raw)
-        lattice_burning = burning_method(lattice_raw)
-        plot_lattice_with_values(lattice_burning)
-    # params = read_input_parameters('perc_ini.txt')
-    # L = int(params['L'])
-    # T = int(params['T'])
-    # p_0 = params['p0']
-    # p_k = params['pk']
-    # d_p = params['dp']
-    #
-    # pf_low = {}
-    # avg_smax = {}
-    # cluster_distribution = {}
-    #
-    # p_values = np.arange(p_0, p_k + d_p, d_p)
-    # for p in p_values:
-    #     pf_count = 0
-    #     smax_total = 0
-    #     distribution_total = Counter()
-    #
-    #     for _ in range(T):
-    #         lattice = create_lattice(L, p)
-    #         lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
-    #
-    #         if np.any(lattice_hoshen[0, :] == lattice_hoshen[-1, :]):
-    #             pf_count += 1
-    #
-    #         smax_total += max_cluster_size
-    #         distribution_total.update(distribution)
-    #
-    #     pf_low[p] = pf_count / T
-    #     avg_smax[p] = smax_total / T
-    #     cluster_distribution[p] = dict(distribution_total)
-    #
-    # write_ave_output_to_file(L, T, pf_low, avg_smax)
-    # write_dist_output_to_file(L, T, cluster_distribution)
+    # PART A OF TASKS - lattice, burning, hoshen
+    # lattice_size_ex1 = 10
+    # percolation_p_ex1 = [0.4, 0.6, 0.8]
+    # for p in percolation_p_ex1:
+    #     lattice_raw = create_lattice(lattice_size_ex1, p,10)
+    #     plot_lattice_with_values(lattice_raw, title=f"Lattice raw {p}.png", save=True)
+    #     lattice_burning, connection = burning_method(lattice_raw)
+    #     plot_lattice_with_values(lattice_burning,f"Burning method p={p}", save=True)
+    #     labeled_lattice, cluster_sizes, max_size, distribution = hoshen_kopelman_2(lattice_raw)
+    #     plot_lattice_with_values(labeled_lattice,save=True, title=f"Hoshen_Kopelman{p}")
+
+    # PART B, C, D OF TASKS
+    params = read_input_parameters('perc_ini.txt')
+    L = int(params['L'])
+    T = int(params['T'])
+    p_0 = params['p0']
+    p_k = params['pk']
+    d_p = params['dp']
+
+    p_flow = {}
+    avg_smax = {}
+    cluster_distribution = {}
+
+    p_values = np.arange(p_0, p_k + d_p, d_p)
+    for p in p_values:
+        pf_count = 0
+        smax_total = 0
+        distribution_total = Counter()
+
+        for _ in range(T):
+            lattice = create_lattice(L, p)
+            lattice_burned, connection = burning_method(lattice)
+            lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
+
+            pf_count += connection
+
+            smax_total += max_cluster_size
+            distribution_total.update(distribution)
+
+        p_flow[p] = pf_count / T
+        avg_smax[p] = smax_total / T
+        cluster_distribution[p] = dict(distribution_total)
+
+    write_ave_output_to_file(L, T, p_flow, avg_smax)
+    write_dist_output_to_file(L, T, cluster_distribution)
 
