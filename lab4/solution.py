@@ -248,7 +248,16 @@ def read_input_parameters(filename):
     return params
 
 
+
+def read_ave_file(filename):
+    data = np.loadtxt(filename)
+    p_values = data[:, 0]
+    pf_low = data[:, 1]
+    return p_values, pf_low
+
+
 if __name__ == "__main__":
+    pass
     # PART A OF TASKS - lattice, burning, hoshen
     # lattice_size_ex1 = 10
     # percolation_p_ex1 = [0.4, 0.6, 0.8]
@@ -261,37 +270,36 @@ if __name__ == "__main__":
     #     plot_lattice_with_values(labeled_lattice,save=True, title=f"Hoshen_Kopelman{p}")
 
     # PART B, C, D OF TASKS
-    params = read_input_parameters('perc_ini.txt')
-    L = int(params['L'])
-    T = int(params['T'])
-    p_0 = params['p0']
-    p_k = params['pk']
-    d_p = params['dp']
-
-    p_flow = {}
-    avg_smax = {}
-    cluster_distribution = {}
-
-    p_values = np.arange(p_0, p_k + d_p, d_p)
-    for p in p_values:
-        pf_count = 0
-        smax_total = 0
-        distribution_total = Counter()
-
-        for _ in range(T):
-            lattice = create_lattice(L, p)
-            lattice_burned, connection = burning_method(lattice)
-            lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
-
-            pf_count += connection
-
-            smax_total += max_cluster_size
-            distribution_total.update(distribution)
-
-        p_flow[p] = pf_count / T
-        avg_smax[p] = smax_total / T
-        cluster_distribution[p] = dict(distribution_total)
-
-    write_ave_output_to_file(L, T, p_flow, avg_smax)
-    write_dist_output_to_file(L, T, cluster_distribution)
-
+    # params = read_input_parameters('perc_ini.txt')
+    # L = int(params['L'])
+    # T = int(params['T'])
+    # p_0 = params['p0']
+    # p_k = params['pk']
+    # d_p = params['dp']
+    #
+    # p_flow = {}
+    # avg_smax = {}
+    # cluster_distribution = {}
+    #
+    # p_values = np.arange(p_0, p_k + d_p, d_p)
+    # for p in p_values:
+    #     pf_count = 0
+    #     smax_total = 0
+    #     distribution_total = Counter()
+    #
+    #     for _ in range(T):
+    #         lattice = create_lattice(L, p)
+    #         lattice_burned, connection = burning_method(lattice)
+    #         lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
+    #
+    #         pf_count += connection
+    #
+    #         smax_total += max_cluster_size
+    #         distribution_total.update(distribution)
+    #
+    #     p_flow[p] = pf_count / T
+    #     avg_smax[p] = smax_total / T
+    #     cluster_distribution[p] = dict(distribution_total)
+    #
+    # write_ave_output_to_file(L, T, p_flow, avg_smax)
+    # write_dist_output_to_file(L, T, cluster_distribution)

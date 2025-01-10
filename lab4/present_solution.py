@@ -1,12 +1,12 @@
 """
 author: Dominik Cedro
 """
-
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
+from lab4.solution import read_ave_file
+
 
 def read_ave_output_file(filename):
     data = np.loadtxt(filename)
@@ -75,8 +75,25 @@ def plot_cluster_distribution():
     plt.tight_layout()
     plt.show()
 
+def plot_p_flow_for_given_output(): # TASK B
+    L_values = [10, 50, 100]
+    T = 20
+
+    for L in L_values:
+        filename = f'output/Ave-L{L}T{T}.txt'
+        p_values, pf_low = read_ave_file(filename)
+        plt.plot(p_values, pf_low, label=f'L={L}', marker='o')
+
+    plt.xlabel('p')
+    plt.ylabel('Pf_low')
+    plt.legend()
+    plt.title('Probability Pf_low as a function of p')
+    plt.show()
+
+
 # Generate the figures
 # plot_sample_configurations()
 plot_pf_low_vs_p()
-plot_avg_smax_vs_p()
-plot_cluster_distribution()
+# plot_avg_smax_vs_p()
+# plot_cluster_distribution()
+# plot_p_flow_for_given_output()
