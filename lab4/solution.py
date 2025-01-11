@@ -41,15 +41,6 @@ def create_lattice(size_of_lattice, site_p, ranom_seed = 0):
     return lattice
 
 
-def plot_lattice(lattice):
-    plt.imshow(lattice, interpolation='none')
-    plt.colorbar(label='Site Occupation')
-    plt.title('Lattice Occupation')
-    plt.xlabel('Column')
-    plt.ylabel('Row')
-    plt.show()
-
-
 def burning_method(lattice_raw):
     lattice = np.copy(lattice_raw)
     t_value = 2
@@ -89,25 +80,34 @@ def burning_method(lattice_raw):
     return lattice, connection
 
 
-def plot_lattice_with_values(lattice, title="", save=False):
-    plt.imshow(lattice, interpolation='none', cmap='viridis')
-    plt.colorbar(label='Site Occupation')
+import matplotlib.pyplot as plt
+import numpy as np
 
-    if title:
-        plt.title(title)
+def plot_lattice_with_values(lattice, file_name="", save=False, color='viridis', plot_title=""):
+    plt.imshow(lattice, interpolation='none', cmap=color)
+    # plt.colorbar(label='Site Occupation')
+
+    if plot_title:
+        plt.title(plot_title)
     else:
-        title='plot'
         plt.title('Lattice Occupation')
 
-    plt.xlabel('Column')
-    plt.ylabel('Row')
+    plt.xlabel('Columns')
+    plt.ylabel('Rows')
 
     rows, cols = lattice.shape
+    cmap = plt.get_cmap(color)
+    norm = plt.Normalize(vmin=lattice.min(), vmax=lattice.max())
+
     for i in range(rows):
         for j in range(cols):
-            plt.text(j, i, str(lattice[i, j]), ha='center', va='center', color='white')
+            color_value = cmap(norm(lattice[i, j]))
+            brightness = 0.299 * color_value[0] + 0.587 * color_value[1] + 0.114 * color_value[2] # check for light text on dark fields and vv
+            text_color = 'black' if brightness > 0.5 else 'white'
+            plt.text(j, i, str(lattice[i, j]), ha='center', va='center', color=text_color)
+
     if save:
-        plt.savefig(fname=f'plot/{title}.png', format='png')
+        plt.savefig(fname=f'plot/{file_name}.png', format='png')
         plt.show()
     else:
         plt.show()
@@ -118,6 +118,20 @@ def hoshen_kopelman(lattice):
     labeled_lattice = np.zeros_like(lattice, dtype=int)
     cluster_sizes = defaultdict(int)
     next_label = 2
+    label_map = {}
+
+    def find(label):
+        while label_map[label] != label:
+            label = label_map[label]
+        return label
+
+    def union(label1, label2):
+        root1 = find(label1)
+        root2 = find(label2)
+        if root1 != root2:
+            label_map[root2] = root1
+            cluster_sizes[root1] += cluster_sizes[root2]
+            del cluster_sizes[root2]
 
     for i in range(rows):
         for j in range(cols):
@@ -128,6 +142,7 @@ def hoshen_kopelman(lattice):
                 if top == 0 and left == 0:
                     labeled_lattice[i, j] = next_label
                     cluster_sizes[next_label] = 1
+                    label_map[next_label] = next_label
                     next_label += 1
                 elif top > 0 and left == 0:
                     labeled_lattice[i, j] = top
@@ -141,17 +156,13 @@ def hoshen_kopelman(lattice):
                         cluster_sizes[top] += 1
                     else:
                         labeled_lattice[i, j] = min(top, left)
-                        smaller, larger = min(top, left), max(top, left)
-                        cluster_sizes[smaller] += cluster_sizes[larger] + 1
-                        cluster_sizes[larger] = -smaller
+                        union(top, left)
+                        cluster_sizes[find(top)] += 1
 
     for i in range(rows):
         for j in range(cols):
             if labeled_lattice[i, j] > 0:
-                label = labeled_lattice[i, j]
-                while cluster_sizes[label] < 0:
-                    label = -cluster_sizes[label]
-                labeled_lattice[i, j] = label
+                labeled_lattice[i, j] = find(labeled_lattice[i, j])
 
     final_cluster_sizes = {k: v for k, v in cluster_sizes.items() if v > 0}
 
@@ -160,7 +171,6 @@ def hoshen_kopelman(lattice):
         distribution[size] += 1
 
     return labeled_lattice, list(final_cluster_sizes.values()), max(final_cluster_sizes.values()) if final_cluster_sizes else 0, dict(distribution)
-
 
 def write_ave_output_to_file(L, T, pf_low, avg_smax):
     os.makedirs('output', exist_ok=True)
@@ -207,41 +217,3 @@ def read_dist_file(filename):
             c_count.append(int(parts[1]))
 
     return np.array(c_size), np.array(c_count)
-
-if __name__ == "__main__":
-    params = read_input_parameters('perc_ini.txt')
-    L = int(params['L'])
-    T = int(params['T'])
-    p_0 = params['p0']
-    p_k = params['pk']
-    d_p = params['dp']
-
-    p_flow = {}
-    avg_smax = {}
-    cluster_distribution = {}
-
-    p_values = np.arange(p_0, p_k, d_p)
-    for p in p_values:
-        ic(time.time())
-        ic(p)
-        pf_count = 0
-        smax_total = 0
-        distribution_total = Counter()
-
-        for _ in range(1,T):
-            ic(_)
-            lattice = create_lattice(L, p)
-            lattice_burned, connection = burning_method(lattice)
-            lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
-
-            pf_count += connection
-
-            smax_total += max_cluster_size
-            distribution_total.update(distribution)
-
-        p_flow[p] = pf_count / T
-        avg_smax[p] = smax_total / T
-        cluster_distribution[p] = dict(distribution_total)
-
-    write_ave_output_to_file(L, T, p_flow, avg_smax)
-    write_dist_output_to_file(L, T, cluster_distribution)
