@@ -1,12 +1,19 @@
+"""
+author: Dominik Cedro
+description: This file contains solution to generate output to /output/ folder
+variables are loaded from 'perc_ini.txt' file.
+"""
 from collections import Counter
-
 import numpy as np
+from icecream import ic
 
-from lab4.solution import read_input_parameters, create_lattice, burning_method, hoshen_kopelman, \
-    write_ave_output_to_file, write_dist_output_to_file
+import lab4.solution as solution
+import time
+import cProfile
+import pstats
 
-if __name__ == "__main__":
-    params = read_input_parameters('perc_ini.txt')
+def main():
+    params = solution.read_input_parameters('perc_ini.txt')
     L = int(params['L'])
     T = int(params['T'])
     p_0 = params['p0']
@@ -17,16 +24,18 @@ if __name__ == "__main__":
     avg_smax = {}
     cluster_distribution = {}
 
-    p_values = np.arange(p_0, p_k + d_p, d_p)
+    p_values = np.arange(p_0, p_k, d_p)
     for p in p_values:
+        ic(time.time())
+        ic(p)
         pf_count = 0
         smax_total = 0
         distribution_total = Counter()
 
         for _ in range(T):
-            lattice = create_lattice(L, p)
-            lattice_burned, connection = burning_method(lattice)
-            lattice_hoshen, cluster_sizes, max_cluster_size, distribution = hoshen_kopelman(lattice)
+            lattice = solution.create_lattice(L, p)
+            lattice_burned, connection = solution.burning_method(lattice)
+            lattice_hoshen, cluster_sizes, max_cluster_size, distribution = solution.hoshen_kopelman(lattice)
 
             pf_count += connection
 
@@ -37,5 +46,10 @@ if __name__ == "__main__":
         avg_smax[p] = smax_total / T
         cluster_distribution[p] = dict(distribution_total)
 
-    write_ave_output_to_file(L, T, p_flow, avg_smax)
-    write_dist_output_to_file(L, T, cluster_distribution)
+    solution.write_ave_output_to_file(L, T, p_flow, avg_smax)
+    solution.write_dist_output_to_file(L, T, cluster_distribution)
+
+if __name__ == "__main__":
+    cProfile.run('main()', 'profile_output')
+    p = pstats.Stats('profile_output')
+    p.sort_stats('cumulative').print_stats(10)
