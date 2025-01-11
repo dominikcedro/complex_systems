@@ -256,6 +256,18 @@ def read_ave_file(filename):
     return p_values, pf_low
 
 
+def read_dist_file(filename):
+    c_size = []
+    c_count = []
+
+    with open(filename, 'r') as file:
+        for line in file:
+            parts = line.split()
+            c_size.append(int(parts[0]))
+            c_count.append(int(parts[1]))
+
+    return np.array(c_size), np.array(c_count)
+
 if __name__ == "__main__":
     pass
     # PART A OF TASKS - lattice, burning, hoshen
