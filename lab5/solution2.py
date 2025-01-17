@@ -2,6 +2,8 @@ import os
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
+import json
+
 
 def load_facebook_network(directory):
     G = nx.Graph()
@@ -14,18 +16,15 @@ def load_facebook_network(directory):
                     G.add_edge(node1, node2)
     return G
 
-def calculate_degree_distribution(G):
+
+def calculate_network_properties(G):
     degrees = [degree for node, degree in G.degree()]
     degree_distribution = np.bincount(degrees) / G.number_of_nodes()
     average_degree = np.mean(degrees)
-    return degree_distribution, average_degree
 
-def calculate_clustering_coefficients(G):
     clustering_coeffs = list(nx.clustering(G).values())
     average_clustering_coeff = np.mean(clustering_coeffs)
-    return clustering_coeffs, average_clustering_coeff
 
-def calculate_shortest_paths_and_diameter(G):
     if nx.is_connected(G):
         path_lengths = dict(nx.all_pairs_shortest_path_length(G))
         lengths = [length for target_dict in path_lengths.values() for length in target_dict.values()]
@@ -41,19 +40,32 @@ def calculate_shortest_paths_and_diameter(G):
             diameters.append(nx.diameter(subgraph))
         diameter = max(diameters)
         average_path_length = np.mean(lengths)
-    return lengths, diameter, average_path_length
 
-def analyze_network(directory):
-    G = load_facebook_network(directory)
+    return {
+        "degree_distribution": degree_distribution.tolist(),
+        "average_degree": average_degree,
+        "clustering_coeffs": clustering_coeffs,
+        "average_clustering_coeff": average_clustering_coeff,
+        "path_lengths": lengths,
+        "diameter": diameter,
+        "average_path_length": average_path_length
+    }
 
-    degree_distribution, average_degree = calculate_degree_distribution(G)
-    clustering_coeffs, average_clustering_coeff = calculate_clustering_coefficients(G)
-    path_lengths, diameter, average_path_length = calculate_shortest_paths_and_diameter(G)
 
-    print(f"Average Degree: {average_degree}")
-    print(f"Average Clustering Coefficient: {average_clustering_coeff}")
-    print(f"Diameter: {diameter}")
-    print(f"Average Path Length: {average_path_length}")
+def save_network_properties(properties, file_path):
+    with open(file_path, 'w') as f:
+        json.dump(properties, f)
+
+
+def load_network_properties(file_path):
+    with open(file_path, 'r') as f:
+        return json.load(f)
+
+
+def plot_properties(properties):
+    degree_distribution = properties["degree_distribution"]
+    clustering_coeffs = properties["clustering_coeffs"]
+    path_lengths = properties["path_lengths"]
 
     plt.figure(figsize=(10, 6))
     plt.bar(range(len(degree_distribution)), degree_distribution, width=0.8, color='skyblue')
@@ -64,18 +76,25 @@ def analyze_network(directory):
 
     plt.figure(figsize=(10, 6))
     plt.hist(clustering_coeffs, bins=10, color='skyblue', edgecolor='black')
-    plt.title('Clustering Coefficient Distribution')
+    plt.title('Distribution of Clustering Coefficients')
     plt.xlabel('Clustering Coefficient')
     plt.ylabel('Frequency')
     plt.show()
 
     plt.figure(figsize=(10, 6))
     plt.hist(path_lengths, bins=20, color='skyblue', edgecolor='black')
-    plt.title('Shortest Path Length Distribution')
+    plt.title('Distribution of the Shortest Paths')
     plt.xlabel('Path Length')
     plt.ylabel('Frequency')
     plt.show()
 
-# Example usage
-directory = 'facebook'
-analyze_network(directory)
+if  __name__ == "__main__":
+    directory = 'facebook'
+    properties_file = 'network_properties.json'
+
+    G = load_facebook_network(directory)
+    properties = calculate_network_properties(G)
+    save_network_properties(properties, properties_file)
+
+    loaded_properties = load_network_properties(properties_file)
+    plot_properties(loaded_properties)
