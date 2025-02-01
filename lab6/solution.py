@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use('TkAgg')
 
-COLLISION_AVOID_DISTANCE = 20
+COLLISION_AVOID_DISTANCE = 30
 NEIGHBOURING_DISTANCE = 40
 PLOT_SIZE = 300 # side of the ploat == plot_size * 2
 FLOCK_SIZE = 20
